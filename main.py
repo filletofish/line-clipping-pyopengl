@@ -2,7 +2,6 @@ from __future__ import division
 import glfw
 import copy
 from OpenGL.GL import *
-
 import numpy
 
 window_width = 400
@@ -17,7 +16,6 @@ to_draw_line = False
 to_slice = False
 
 
-
 def key_callback(window, key, scancode, action, mods):
     global vertices, to_redraw, debug, to_draw_line, line, edges, cutted_line, to_slice
     if action == glfw.PRESS:
@@ -26,7 +24,7 @@ def key_callback(window, key, scancode, action, mods):
             return
         if key == glfw.KEY_S:
             cutted_line = []
-            to_slice = not to_slice # )))
+            to_slice = not to_slice  # )))
             to_redraw = True
         if key == glfw.KEY_L:
             to_draw_line = not to_draw_line
@@ -52,7 +50,7 @@ def mouse_button_callback(window, button, action, mods):
         # get rounded coordinates for pixel matrix
         coordinates = ((coordinates_of_click[0] - window_width / 2),
                        (window_height - coordinates_of_click[1] - window_height / 2))
-        #print(coordinates)
+        # print(coordinates)
         if to_draw_line:
             length = len(line)
             if length == 0:
@@ -76,9 +74,8 @@ def compute_edges():
     if len(edges) > 1: edges.append([vertices[len(vertices) - 1], vertices[0]])
 
 
-
 def get_norm_direction(line1, line2):
-    z = line1[0]*line2[1] - line1[1]*line2[0]
+    z = line1[0] * line2[1] - line1[1] * line2[0]
     if z == 0:
         return 0
     elif z > 0:
@@ -96,7 +93,7 @@ def line_intersection(line1, line2):
 
     div = det(xdiff, ydiff)
     if div == 0:
-       return False
+        return False
 
     d = (det(*line1), det(*line2))
     x = det(d, xdiff) / div
@@ -104,17 +101,25 @@ def line_intersection(line1, line2):
     return x, y
 
 
+def in_polygon(x, y, xp, yp):
+    c = 0
+    for i in range(len(xp)):
+        if (((yp[i] <= y and y < yp[i - 1]) or (yp[i - 1] <= y and y < yp[i])) and \
+                    (x > (xp[i - 1] - xp[i]) * (y - yp[i]) / (yp[i - 1] - yp[i]) + xp[i])): c = 1 - c
+    return c
+
+
 def slice():
     global line, debug, cutted_line, to_slice
-    cutted_line = copy.copy(line)
+    cutted_line = line[:]
 
     for edge in edges:
         result = line_intersection(edge, line)
 
         if result and min(edge[0][0], edge[1][0]) < result[0] < max(edge[0][0], edge[1][0]) \
-                  and min(edge[0][1], edge[1][1]) < result[1] < max(edge[0][1], edge[1][1]) \
-                  and min(line[0][0], line[1][0]) < result[0] < max(line[0][0], line[1][0]) \
-                  and min(line[0][1], line[1][1]) < result[1] < max(line[0][1], line[1][1]):
+                and min(edge[0][1], edge[1][1]) < result[1] < max(edge[0][1], edge[1][1]) \
+                and min(line[0][0], line[1][0]) < result[0] < max(line[0][0], line[1][0]) \
+                and min(line[0][1], line[1][1]) < result[1] < max(line[0][1], line[1][1]):
             print("intersected ")
             print(result)
             cutted_line.insert(len(cutted_line) - 1, result)
@@ -140,14 +145,25 @@ def draw():
         glVertex2f(edge[1][0] / (window_width / 2), edge[1][1] / (window_width / 2))
         glEnd()
 
-
     if to_slice:
         cutted_line = sorted(cutted_line, key=lambda x: x[0])
+
+        #creating list of x and y vertices
+        x_vertices, y_vertices = [], []
+        for v in vertices:
+            x_vertices.append(v[0])
+            y_vertices.append(v[1])
+
+        if to_draw_line and in_polygon(cutted_line[0][0], cutted_line[0][1], x_vertices, y_vertices) == 1:
+            a = 1
+            print("first point inside polygon\n")
+        else: a = 0
+
         for i in range(1, len(cutted_line)):
             glBegin(GL_LINES)
-            glColor3f(i % 2, 0, 0)
+            glColor3f((i + a) % 2, 0, 0)
             glVertex2f(cutted_line[i - 1][0] / (window_width / 2), cutted_line[i - 1][1] / (window_width / 2))
-            glColor3f(i % 2, 0, 0)
+            glColor3f((i + a) % 2, 0, 0)
             glVertex2f(cutted_line[i][0] / (window_width / 2), cutted_line[i][1] / (window_width / 2))
             glEnd()
     elif to_draw_line and len(line) == 2:
